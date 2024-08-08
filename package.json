@@ -1,0 +1,15 @@
+{
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "@discordjs/builders": "^1.6.3",
+    "@discordjs/rest": "^1.6.0",
+    "discord-api-types": "^0.37.46",
+    "discord.js": "^14.12.1",
+    "express": "^4.18.2",
+    "fs": "^0.0.2",
+    "lodash.uniqwith": "^4.5.0",
+    "moment": "^2.29.4"
+  }
+}
