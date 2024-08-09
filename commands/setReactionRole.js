@@ -1,7 +1,17 @@
+const config = require("../config.js");
+
 module.exports = {
   name: "setreactionrole",
   description: "Устанавливает роль по реакции",
+
   async execute(client, message, args) {
+
+    const requiredRoleId = config.id_role_for_allow_setReactinCommand; 
+
+    if (!message.member.roles.cache.has(requiredRoleId)) {
+      return message.reply("У вас нет прав на использование этой команды.");
+    }
+
     const [messageId, emoji, roleId, ...conflicts] = args;
 
     if (!messageId || !emoji || !roleId) {
@@ -29,8 +39,10 @@ module.exports = {
 
       // Обновляем обработчики
       client.updateReactionHandlers();
-
-      await message.reply(`Роль успешно настроена на сообщение с ID: ${messageId} для реакции ${emoji}`);
+      
+      const reply = await message.reply(`Роль успешно настроена на сообщение с ID: ${messageId} для реакции ${emoji}`);
+      setTimeout(() => reply.delete(), 5000);
+      
     } catch (error) {
       console.error(error);
       await message.reply("Произошла ошибка при настройке роли.");
