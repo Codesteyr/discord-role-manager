@@ -2,6 +2,30 @@ const fs = require("fs");
 const path = require("path");
 
 const configPath = path.join(__dirname, "../reactionRoles.json");
+let reactionConfig;
+
+// Загружаем конфигурацию при запуске программы
+function loadConfig() {
+  try {
+    const rawData = fs.readFileSync(configPath, "utf8");
+    reactionConfig = JSON.parse(rawData);
+  } catch (error) {
+    console.error("Ошибка при загрузке конфигурации:", error);
+    reactionConfig = { roleReactions: [] }; // Если ошибка чтения, создаем пустую конфигурацию
+  }
+}
+
+// Сохраняем конфигурацию на диск
+function saveConfig() {
+  try {
+    fs.writeFileSync(configPath, JSON.stringify(reactionConfig, null, 2));
+  } catch (error) {
+    console.error("Ошибка при сохранении конфигурации:", error);
+  }
+}
+
+// Загружаем конфигурацию при запуске
+loadConfig();
 
 module.exports = (client) => {
   client.on("messageReactionAdd", async (reaction, user) => {
@@ -9,9 +33,6 @@ module.exports = (client) => {
 
     const { message, emoji } = reaction;
     const member = await message.guild.members.fetch(user.id);
-
-    // Загружаем конфигурацию из файла
-    const reactionConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
 
     const handleReaction = async (reactionData) => {
       const roleMapping = reactionData.reactions.find(
@@ -56,8 +77,6 @@ module.exports = (client) => {
 
     const { message, emoji } = reaction;
     const member = await message.guild.members.fetch(user.id);
-
-    const reactionConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
 
     const handleReaction = async (reactionData) => {
       const roleMapping = reactionData.reactions.find(

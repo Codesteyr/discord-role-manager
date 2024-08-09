@@ -1,8 +1,3 @@
-const fs = require("fs");
-const path = require("path");
-
-const configPath = path.join(__dirname, "../reactionRoles.json");
-
 module.exports = {
   name: "setreactionrole",
   description: "Устанавливает роль по реакции",
@@ -17,26 +12,20 @@ module.exports = {
       const targetMessage = await message.channel.messages.fetch(messageId);
       await targetMessage.react(emoji);
 
-      // Перезагружаем конфиг из файла
-      let reactionConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
-
-      let reactionData = reactionConfig.roleReactions.find(
+      // Работаем с данными в памяти, а не напрямую с файлом
+      let reactionData = client.reactionRoles.roleReactions.find(
         (data) => data.messageId === messageId
       );
 
       if (!reactionData) {
         reactionData = { messageId, reactions: [] };
-        reactionConfig.roleReactions.push(reactionData);
+        client.reactionRoles.roleReactions.push(reactionData);
       }
 
       reactionData.reactions.push({ emoji, roleId, conflicts });
 
-      try {
-        fs.writeFileSync(configPath, JSON.stringify(reactionConfig, null, 2));
-        console.log("Данные о реакциях успешно сохранены.");
-      } catch (error) {
-        console.error("Ошибка при сохранении данных о реакциях:", error);
-      }
+      // Сохраняем данные в память, а затем они будут записаны в файл при завершении работы программы
+      client.saveReactionRoles(client);
 
       await message.reply(`Роль успешно настроена на сообщение с ID: ${messageId} для реакции ${emoji}`);
     } catch (error) {
