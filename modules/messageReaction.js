@@ -1,87 +1,81 @@
+const fs = require("fs");
+const path = require("path");
+
+const configPath = path.join(__dirname, "../reactionRoles.json");
+
 module.exports = (client) => {
-  const logChannelId = "1271028951623536715"; // Замените на фактический ID вашего текстового канала
-
   client.on("messageReactionAdd", async (reaction, user) => {
-    // Получение текстового канала
-    const logChannel = await client.channels.fetch(logChannelId);
+    if (user.bot) return;
 
-    // Проверка, что реакция была добавлена к нужному сообщению
-    if (reaction.message.id === client.selectedMessage) {
-      // Проверка, что реакция принадлежит боту
-      if (user.bot) {
-        return;
-      }
+    const { message, emoji } = reaction;
+    const member = await message.guild.members.fetch(user.id);
 
-      // Поиск соответствующей роли для реакции
-      const reactionRole = client.reactionRoles.find(
-        (rr) =>
-          rr.messageId === client.selectedMessage &&
-          rr.emoji === reaction.emoji.name
+    // Загружаем конфигурацию из файла
+    const reactionConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
+
+    const handleReaction = async (reactionData) => {
+      const roleMapping = reactionData.reactions.find(
+        (r) => r.emoji === emoji.name || r.emoji === emoji.toString()
       );
 
-      if (reactionRole) {
-        const guild = reaction.message.guild;
-        const member = await guild.members.fetch(user.id);
+      if (roleMapping) {
+        const role = message.guild.roles.cache.get(roleMapping.roleId);
 
-        // Проверка, есть ли у пользователя роль
-        if (!member.roles.cache.has(reactionRole.roleId)) {
-          // Выдача роли пользователю
-          try {
-            await member.roles.add(reactionRole.roleId);
-            console.log(
-              `Выдана роль ${reactionRole.roleId} пользователю ${user.tag}`
-            );
-            const logMessage = `Выдана роль ${reactionRole.roleId} пользователю ${user.tag}`;
-            logChannel.send(logMessage).catch((error) => {
-              console.error(`Ошибка при отправке сообщения в канал: ${error}`);
-            });
-          } catch (error) {
-            console.error(`Ошибка при выдаче роли: ${error}`);
+        if (roleMapping.conflicts) {
+          for (const conflictRoleId of roleMapping.conflicts) {
+            if (member.roles.cache.has(conflictRoleId)) {
+              const conflictingRole = message.guild.roles.cache.get(conflictRoleId);
+              if (conflictingRole) {
+                await member.roles.remove(conflictingRole);
+                const conflictingReaction = message.reactions.cache.find(
+                  (r) => reactionData.reactions.find(c => c.roleId === conflictRoleId).emoji === r.emoji.name
+                );
+                if (conflictingReaction) {
+                  await conflictingReaction.users.remove(user.id);
+                }
+              }
+            }
           }
         }
+
+        if (role) {
+          await member.roles.add(role);
+        }
       }
-    }
+    };
+
+    reactionConfig.roleReactions.forEach((reactionData) => {
+      if (reactionData.messageId === message.id) {
+        handleReaction(reactionData);
+      }
+    });
   });
 
   client.on("messageReactionRemove", async (reaction, user) => {
-    // Получение текстового канала
-    const logChannel = await client.channels.fetch(logChannelId);
+    if (user.bot) return;
 
-    // Проверка, что реакция была удалена из нужного сообщения
-    if (reaction.message.id === client.selectedMessage) {
-      // Проверка, что реакция принадлежит боту
-      if (user.bot) {
-        return;
-      }
+    const { message, emoji } = reaction;
+    const member = await message.guild.members.fetch(user.id);
 
-      // Поиск соответствующей роли для реакции
-      const reactionRole = client.reactionRoles.find(
-        (rr) =>
-          rr.messageId === client.selectedMessage &&
-          rr.emoji === reaction.emoji.name
+    const reactionConfig = JSON.parse(fs.readFileSync(configPath, "utf8"));
+
+    const handleReaction = async (reactionData) => {
+      const roleMapping = reactionData.reactions.find(
+        (r) => r.emoji === emoji.name || r.emoji === emoji.toString()
       );
 
-      if (reactionRole) {
-        const guild = reaction.message.guild;
-        const member = await guild.members.fetch(user.id);
-
-        // Проверка, есть ли у пользователя роль
-        if (member.roles.cache.has(reactionRole.roleId)) {
-          // Удаление роли у пользователя
-          try {
-            await member.roles.remove(reactionRole.roleId);
-            console.log(
-              `Роль ${reactionRole.roleId} удалена у пользователя ${user.tag}`
-            );
-            const logMessage = `Роль ${reactionRole.roleId} удалена у пользователя ${user.tag}`;
-            logChannel.send(logMessage).catch((error) => {
-              console.error(`Ошибка при отправке сообщения в канал: ${error}`);
-            });
-          } catch (error) {
-            console.error(`Ошибка при удалении роли: ${error}`);
-          }
+      if (roleMapping) {
+        const role = message.guild.roles.cache.get(roleMapping.roleId);
+        if (role) {
+          await member.roles.remove(role);
         }
       }
-    }
+    };
+
+    reactionConfig.roleReactions.forEach((reactionData) => {
+      if (reactionData.messageId === message.id) {
+        handleReaction(reactionData);
+      }
+    });
   });
 };

@@ -13,7 +13,7 @@ const client = require("../index");
 module.exports = {
   name: "ping",
   aliases: ["ping"],
-  run: async (client, message, interaction) => {
-    message.channel.send("ку");
+  execute: async (client, message, interaction) => { 
+    message.channel.send("pong");
   },
 };

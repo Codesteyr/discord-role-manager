@@ -7,49 +7,48 @@ const {
 const config = require("./config.js");
 const path = require("node:path");
 const fs = require("fs");
-// Попытка создать пустой файл 'reactionRoles.json'
-// fs.writeFileSync("reactionRoles.json", "[]", { flag: "wx" });
-const { readdirSync } = require("fs");
+
 const client = new Client({
   partials: [
-    Partials.Message, // for message
-    Partials.Channel, // for text channel
-    Partials.GuildMember, // for guild member
-    Partials.Reaction, // for message reaction
-    Partials.GuildScheduledEvent, // for guild events
-    Partials.User, // for discord user
-    Partials.ThreadMember, // for thread member
+    Partials.Message,
+    Partials.Channel,
+    Partials.GuildMember,
+    Partials.Reaction,
+    Partials.GuildScheduledEvent,
+    Partials.User,
+    Partials.ThreadMember,
   ],
   intents: [
-    GatewayIntentBits.Guilds, // for guild related things
-    GatewayIntentBits.GuildMembers, // for guild members related things
-    GatewayIntentBits.GuildBans, // for manage guild bans
-    GatewayIntentBits.GuildEmojisAndStickers, // for manage emojis and stickers
-    GatewayIntentBits.GuildIntegrations, // for discord Integrations
-    GatewayIntentBits.GuildWebhooks, // for discord webhooks
-    GatewayIntentBits.GuildInvites, // for guild invite managing
-    GatewayIntentBits.GuildVoiceStates, // for voice related things
-    GatewayIntentBits.GuildPresences, // for user presence things
-    GatewayIntentBits.GuildMessages, // for guild messages things
-    GatewayIntentBits.GuildMessageReactions, // for message reactions things
-    GatewayIntentBits.GuildMessageTyping, // for message typing things
-    GatewayIntentBits.DirectMessages, // for dm messages
-    GatewayIntentBits.DirectMessageReactions, // for dm message reaction
-    GatewayIntentBits.DirectMessageTyping, // for dm message typinh
-    GatewayIntentBits.MessageContent, // enable if you need message content things
+    GatewayIntentBits.Guilds,
+    GatewayIntentBits.GuildMembers,
+    GatewayIntentBits.GuildBans,
+    GatewayIntentBits.GuildEmojisAndStickers,
+    GatewayIntentBits.GuildIntegrations,
+    GatewayIntentBits.GuildWebhooks,
+    GatewayIntentBits.GuildInvites,
+    GatewayIntentBits.GuildVoiceStates,
+    GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.GuildMessages,
+    GatewayIntentBits.GuildMessageReactions,
+    GatewayIntentBits.GuildMessageTyping,
+    GatewayIntentBits.DirectMessages,
+    GatewayIntentBits.DirectMessageReactions,
+    GatewayIntentBits.DirectMessageTyping,
+    GatewayIntentBits.MessageContent,
   ],
 });
+
 const { REST } = require("@discordjs/rest");
 const { Routes } = require("discord-api-types/v10");
 let token = config.token;
 
-module.exports = client;
 client.commands = new Collection();
 client.slashcommands = new Collection();
 client.commandaliases = new Collection();
 const commands = [];
-readdirSync("./commands").forEach(async (file) => {
-  const command = await require(`./commands/${file}`);
+
+fs.readdirSync("./commands").forEach((file) => {
+  const command = require(`./commands/${file}`);
   if (command) {
     client.commands.set(command.name, command);
     commands.push(command.name, command);
@@ -61,7 +60,6 @@ readdirSync("./commands").forEach(async (file) => {
   }
 });
 
-//slash-command-handler
 const slashcommands = [];
 fs.readdirSync("./slashcmd/").forEach((folder) => {
   const commands = fs
@@ -73,18 +71,18 @@ fs.readdirSync("./slashcmd/").forEach((folder) => {
     client.slashcommands.set(command.data.name, command);
   }
 });
-require("./events/message.js");
-require("./events/ready.js");
-require("./events/interactionCreate.js");
+
+require("./events/message.js")(client);
+require("./events/ready.js")(client);
+// require("./events/interactionCreate.js")(client);
 require("./modules/guildMemberAdd.js")(client);
 require("./modules/messageReaction.js")(client);
 require("./modules/welcomeMessage.js")(client);
-// require("./modules/interactionCreate.js")(client);
-// require("./modules/selectRace.js")(client);
 
 client.login(config.token || process.env.TOKEN).catch((e) => {
   console.log("token access denied" + e);
 });
+
 const rest = new REST({ version: "10" }).setToken(token);
 client.on("ready", async () => {
   try {
@@ -97,19 +95,31 @@ client.on("ready", async () => {
 });
 
 try {
-  const reactionData = fs.readFileSync(__dirname + "/reactionRoles.json");
+  const reactionData = fs.readFileSync(path.join(__dirname, "reactionRoles.json"), "utf8");
   client.reactionRoles = JSON.parse(reactionData);
 } catch (error) {
   console.error("Ошибка при загрузке данных о реакциях:", error);
   client.reactionRoles = [];
 }
 
-// Сохранение данных о реакциях при выходе бота
-process.on("exit", () => {
+const saveReactionRoles = (client) => {
   try {
-    const reactionData = JSON.stringify(client.reactionRoles);
-    fs.writeFileSync("reactionRoles.json", reactionData);
+    const reactionData = JSON.stringify(client.reactionRoles, null, 2);
+    fs.writeFileSync(path.join(__dirname, "reactionRoles.json"), reactionData);
   } catch (error) {
     console.error("Ошибка при сохранении данных о реакциях:", error);
   }
+};
+
+process.on("exit", () => saveReactionRoles(client));
+process.on("SIGINT", () => {
+  saveReactionRoles(client);
+  process.exit();
 });
+process.on("SIGTERM", () => {
+  saveReactionRoles(client);
+  process.exit();
+});
+
+module.exports = client;
+module.exports.saveReactionRoles = saveReactionRoles;
