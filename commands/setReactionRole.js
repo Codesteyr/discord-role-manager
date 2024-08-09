@@ -24,8 +24,11 @@ module.exports = {
 
       reactionData.reactions.push({ emoji, roleId, conflicts });
 
-      // Сохраняем данные в память, а затем они будут записаны в файл при завершении работы программы
+      // Сохраняем данные в память
       client.saveReactionRoles(client);
+
+      // Обновляем обработчики
+      client.updateReactionHandlers();
 
       await message.reply(`Роль успешно настроена на сообщение с ID: ${messageId} для реакции ${emoji}`);
     } catch (error) {

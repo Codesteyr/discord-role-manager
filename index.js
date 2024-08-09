@@ -94,14 +94,16 @@ client.on("ready", async () => {
   }
 });
 
+// Загрузка данных о реакциях из файла
 try {
   const reactionData = fs.readFileSync(path.join(__dirname, "reactionRoles.json"), "utf8");
   client.reactionRoles = JSON.parse(reactionData);
 } catch (error) {
   console.error("Ошибка при загрузке данных о реакциях:", error);
-  client.reactionRoles = [];
+  client.reactionRoles = { roleReactions: [] };
 }
 
+// Функция для сохранения данных о реакциях в файл
 const saveReactionRoles = (client) => {
   try {
     const reactionData = JSON.stringify(client.reactionRoles, null, 2);
@@ -111,6 +113,86 @@ const saveReactionRoles = (client) => {
   }
 };
 
+// Функция для обновления обработчиков реакций
+client.updateReactionHandlers = () => {
+  client.removeAllListeners("messageReactionAdd");
+  client.removeAllListeners("messageReactionRemove");
+
+  client.on("messageReactionAdd", async (reaction, user) => {
+    if (user.bot) return;
+
+    const { message, emoji } = reaction;
+    const member = await message.guild.members.fetch(user.id);
+
+    const handleReaction = async (reactionData) => {
+      const roleMapping = reactionData.reactions.find(
+        (r) => r.emoji === emoji.name || r.emoji === emoji.toString()
+      );
+
+      if (roleMapping) {
+        const role = message.guild.roles.cache.get(roleMapping.roleId);
+
+        if (roleMapping.conflicts) {
+          for (const conflictRoleId of roleMapping.conflicts) {
+            if (member.roles.cache.has(conflictRoleId)) {
+              const conflictingRole = message.guild.roles.cache.get(conflictRoleId);
+              if (conflictingRole) {
+                await member.roles.remove(conflictingRole);
+                const conflictingReaction = message.reactions.cache.find(
+                  (r) => reactionData.reactions.find(c => c.roleId === conflictRoleId).emoji === r.emoji.name
+                );
+                if (conflictingReaction) {
+                  await conflictingReaction.users.remove(user.id);
+                }
+              }
+            }
+          }
+        }
+
+        if (role) {
+          await member.roles.add(role);
+        }
+      }
+    };
+
+    client.reactionRoles.roleReactions.forEach((reactionData) => {
+      if (reactionData.messageId === message.id) {
+        handleReaction(reactionData);
+      }
+    });
+  });
+
+  client.on("messageReactionRemove", async (reaction, user) => {
+    if (user.bot) return;
+
+    const { message, emoji } = reaction;
+    const member = await message.guild.members.fetch(user.id);
+
+    const handleReaction = async (reactionData) => {
+      const roleMapping = reactionData.reactions.find(
+        (r) => r.emoji === emoji.name || r.emoji === emoji.toString()
+      );
+
+      if (roleMapping) {
+        const role = message.guild.roles.cache.get(roleMapping.roleId);
+        if (role) {
+          await member.roles.remove(role);
+        }
+      }
+    };
+
+    client.reactionRoles.roleReactions.forEach((reactionData) => {
+      if (reactionData.messageId === message.id) {
+        handleReaction(reactionData);
+      }
+    });
+  });
+};
+
+// Инициализация обработчиков при запуске
+client.updateReactionHandlers();
+
+// Обработчики для сохранения данных при завершении программы
 process.on("exit", () => saveReactionRoles(client));
 process.on("SIGINT", () => {
   saveReactionRoles(client);
