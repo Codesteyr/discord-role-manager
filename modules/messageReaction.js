@@ -42,23 +42,27 @@ module.exports = (client) => {
       if (roleMapping) {
         const role = message.guild.roles.cache.get(roleMapping.roleId);
 
-        if (roleMapping.conflicts) {
+        // Убираем конфликтующие роли и реакции
+        if (roleMapping.conflicts && roleMapping.conflicts.length > 0) {
           for (const conflictRoleId of roleMapping.conflicts) {
             if (member.roles.cache.has(conflictRoleId)) {
               const conflictingRole = message.guild.roles.cache.get(conflictRoleId);
               if (conflictingRole) {
                 await member.roles.remove(conflictingRole);
-                const conflictingReaction = message.reactions.cache.find(
-                  (r) => reactionData.reactions.find(c => c.roleId === conflictRoleId).emoji === r.emoji.name
-                );
-                if (conflictingReaction) {
-                  await conflictingReaction.users.remove(user.id);
-                }
+              }
+
+              // Убираем конфликтующую реакцию
+              const conflictingReaction = message.reactions.cache.find((r) =>
+                reactionData.reactions.find((c) => c.roleId === conflictRoleId).emoji === r.emoji.name || r.emoji.toString()
+              );
+              if (conflictingReaction) {
+                await conflictingReaction.users.remove(user.id);
               }
             }
           }
         }
 
+        // Добавляем роль для текущей реакции
         if (role) {
           await member.roles.add(role);
         }

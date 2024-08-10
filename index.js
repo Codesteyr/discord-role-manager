@@ -113,7 +113,7 @@ const saveReactionRoles = (client) => {
   }
 };
 
-// Функция для обновления обработчиков реакций
+// Обновление обработчиков реакций
 client.updateReactionHandlers = () => {
   client.removeAllListeners("messageReactionAdd");
   client.removeAllListeners("messageReactionRemove");
@@ -132,23 +132,28 @@ client.updateReactionHandlers = () => {
       if (roleMapping) {
         const role = message.guild.roles.cache.get(roleMapping.roleId);
 
-        if (roleMapping.conflicts) {
+        if (roleMapping.conflicts && roleMapping.conflicts.length > 0) {
           for (const conflictRoleId of roleMapping.conflicts) {
             if (member.roles.cache.has(conflictRoleId)) {
               const conflictingRole = message.guild.roles.cache.get(conflictRoleId);
               if (conflictingRole) {
                 await member.roles.remove(conflictingRole);
-                const conflictingReaction = message.reactions.cache.find(
-                  (r) => reactionData.reactions.find(c => c.roleId === conflictRoleId).emoji === r.emoji.name
-                );
-                if (conflictingReaction) {
-                  await conflictingReaction.users.remove(user.id);
-                }
+              }
+
+              // Убираем конфликтующую реакцию, более точное сравнение
+              const conflictingReaction = message.reactions.cache.find((r) => {
+                const conflictMapping = reactionData.reactions.find(c => c.roleId === conflictRoleId);
+                return r.emoji.name === conflictMapping.emoji || r.emoji.toString() === conflictMapping.emoji;
+              });
+
+              if (conflictingReaction) {
+                await conflictingReaction.users.remove(user.id);
               }
             }
           }
         }
 
+        // Добавляем роль для текущей реакции
         if (role) {
           await member.roles.add(role);
         }
@@ -191,6 +196,7 @@ client.updateReactionHandlers = () => {
 
 // Инициализация обработчиков при запуске
 client.updateReactionHandlers();
+
 
 // Обработчики для сохранения данных при завершении программы
 process.on("exit", () => saveReactionRoles(client));
