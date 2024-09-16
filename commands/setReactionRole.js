@@ -4,6 +4,11 @@ module.exports = {
   name: "setreactionrole",
   description: "Устанавливает роль по реакции",
 
+
+  // example use
+  // !setreactionrole <id_message> <icon> <id_role>
+  // !setreactionrole 1271534304433934338 :flag_ru: 1271537188693086248
+  
   async execute(client, message, args) {
 
     const requiredRoleId = config.id_role_for_allow_setReactinCommand; 
